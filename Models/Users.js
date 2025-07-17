@@ -1,6 +1,6 @@
-const mongoose =reuire('mongoose');
+const mongoose =require('mongoose');
 
-const userSchema=new mongoose.schema({
+const userSchema=new mongoose.Schema({
     name:{type:String,required:true},
     email:{type:String,required:true,unique:true},
     password:{type:String,reuired:true},
@@ -9,8 +9,10 @@ const userSchema=new mongoose.schema({
         enum: ['user', 'admin', 'superuser'],
         default: 'user'
     },
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String, default: null },
     createdAt:{type:Date,default:Date.now},
     updatedAt:{type:Date,default:Date.now}
 })
 
-module.exports=mongoose.model("User",userSchema);
+module.exports=mongoose.model("Users",userSchema);

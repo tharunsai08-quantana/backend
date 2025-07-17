@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { dummy,usersData } = require('../Controllers/AuthController');
+const { signUp,verifyEmail } = require('../Controllers/AuthController');
 
 // Get Apis
-
+router.post('/signup/', signUp);
+router.get('/verify_email',verifyEmail);
 module.exports = router;
