@@ -5,7 +5,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const User = require('../Models/Users'); 
+const User = require('../Models/Users');
+const Event = require('../Models/Event');
 const dotenv = require('dotenv');
 dotenv.config();
 const signUp = async (req, res) => {
@@ -117,6 +118,38 @@ const Login = async (req, res) => {
 };
 
 
+const eventDetails = async (req, res) => {
+  const lastEventId = (await Event.findOne().sort({ _id: -1 }))?.eventId;
+const newEventId = lastEventId ? parseInt(lastEventId) + 1 : 1;
+
+  const { organizer, title, speaker, image, hostedBy, category, description, date, location } = req.body;
+
+  if (!organizer || !title || !speaker || !image || !hostedBy || !category || !description || !date || !location) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  const event = new db.Event({
+    eventId: newEventId.toString(),
+    organizer,
+    title,
+    speaker,
+    image,
+    hostedBy,
+    category,
+    description,
+    date,
+    location,
+    createdBy: organizer
+  });
+
+  try {
+    await event.save();
+    res.status(201).json({ message: "Event created successfully", event });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while creating event" });
+  }
+}
 
 
 
@@ -137,11 +170,6 @@ const Login = async (req, res) => {
 
 
 
-
-
-
-
-
-module.exports = { signUp, verifyEmail,Login };
+module.exports = { signUp, verifyEmail,Login,eventDetails };
 
 
