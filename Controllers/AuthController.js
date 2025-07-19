@@ -441,11 +441,8 @@ async function sendApprovalEmail(name, email, keyId, qrCode, title, eventDate) {
 
 const userEventStatus = async (req, res) => {
   const { eventId, name, email, status, title, eventDate } = req.body;
-  console.log("Received data:", { eventId, name, email, status, title, eventDate });
   try {
-    const data = await appliedUser.findOne({ eventId, name, email, title, eventDate });
-    console.log(data);
-    if (!data) {
+    const data = await appliedUser.findOne({ eventId, name, email, title, eventDate });    if (!data) {
       return res.status(404).json({ message: "No application found for this event" });
     }
 
