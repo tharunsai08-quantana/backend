@@ -51,7 +51,7 @@ const signUp = async (req, res) => {
     });
 
     res.status(201).json({ message: "User created successfully. Verification email sent." });
-
+  
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -109,11 +109,89 @@ const Login = async (req, res) => {
 
     res.json({
       message: "Login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified
+      }
     });
 
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error during login" });
+  }
+};
+
+
+
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+    const user = await User.findOne({ email });
+    if (!user) {    
+      return res.status(400).json({ message: "User not found" });
+    }
+    const token = crypto.randomBytes(32).toString('hex');
+    user.verificationToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+    await transporter.sendMail({
+      to: user.email,
+      subject: "Reset your password",
+      html: `<p>Click <a href="http://localhost:8000/auth/reset_password?token=${token}">here</a> to reset your password.</p>`
+    });
+    res.status(200).json({ message: "Password reset email sent" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error during password reset" });
+  }
+}
+
+
+const resetPassword = async (req, res) => {
+  try {
+    console.log(1);
+
+    const { token, newPassword } = req.body;
+console.log(1);
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: "Token and new password are required" });
+    }
+console.log(1);
+    const user = await User.findOne({
+      verificationToken: token,
+      resetPasswordExpires: { $gt: Date.now() }, // token still valid
+    });
+console.log(1);
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+console.log(1);
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.verificationToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: "Password has been reset successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error during password reset" });
   }
 };
 
@@ -170,6 +248,6 @@ const newEventId = lastEventId ? parseInt(lastEventId) + 1 : 1;
 
 
 
-module.exports = { signUp, verifyEmail,Login,eventDetails };
+module.exports = { signUp, verifyEmail,Login,eventDetails,forgotPassword,resetPassword };
 
 
