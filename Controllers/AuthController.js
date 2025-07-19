@@ -163,24 +163,24 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   try {
-    console.log(1);
+    
 
     const { token, newPassword } = req.body;
-console.log(1);
+
 
     if (!token || !newPassword) {
       return res.status(400).json({ message: "Token and new password are required" });
     }
-console.log(1);
+
     const user = await User.findOne({
       verificationToken: token,
       resetPasswordExpires: { $gt: Date.now() }, // token still valid
     });
-console.log(1);
+
     if (!user) {
       return res.status(400).json({ message: "Invalid or expired token" });
     }
-console.log(1);
+
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
     user.verificationToken = undefined;
@@ -206,7 +206,7 @@ const newEventId = lastEventId ? parseInt(lastEventId) + 1 : 1;
     return res.status(400).json({ message: "All fields are required" });
   }
 
-  const event = new db.Event({
+  const event = new Event({
     eventId: newEventId.toString(),
     organizer,
     title,
@@ -219,7 +219,6 @@ const newEventId = lastEventId ? parseInt(lastEventId) + 1 : 1;
     location,
     createdBy: organizer
   });
-
   try {
     await event.save();
     res.status(201).json({ message: "Event created successfully", event });

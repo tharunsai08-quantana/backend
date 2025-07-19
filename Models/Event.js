@@ -15,3 +15,5 @@ const eventSchema=new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now }
 });
+
+module.exports=mongoose.model("Event",eventSchema);

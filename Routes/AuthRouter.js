@@ -6,7 +6,7 @@ const { signUp,verifyEmail,Login,eventDetails,forgotPassword,resetPassword} = re
 router.post('/signup/', signUp);
 router.post('/login/', Login);
 router.get('/verify_email',verifyEmail);
-router.post('/event_details',eventDetails);
+router.post('/create_event',eventDetails);
 router.get('/forgot_password',forgotPassword);
 router.get('/reset_password',resetPassword);
 
