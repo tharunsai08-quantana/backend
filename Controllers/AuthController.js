@@ -196,7 +196,7 @@ const resetPassword = async (req, res) => {
 };
 
 
-const eventDetails = async (req, res) => {
+const createEvent = async (req, res) => {
   const lastEventId = (await Event.findOne().sort({ _id: -1 }))?.eventId;
 const newEventId = lastEventId ? parseInt(lastEventId) + 1 : 1;
 
@@ -205,7 +205,9 @@ const newEventId = lastEventId ? parseInt(lastEventId) + 1 : 1;
   if (!organizer || !title || !speaker || !image || !hostedBy || !category || !description || !date || !location) {
     return res.status(400).json({ message: "All fields are required" });
   }
-
+  if(Event.findOne({ title, date })) {
+    return res.status(400).json({"messgae": "Event with the same title and date already exists"});
+  }
   const event = new Event({
     eventId: newEventId.toString(),
     organizer,
@@ -228,6 +230,53 @@ const newEventId = lastEventId ? parseInt(lastEventId) + 1 : 1;
   }
 }
 
+const updateEvent= async(req,res) => {
+  const { eventId, organizer, title, speaker, image, hostedBy, category, description, date, location } = req.body;
+  const requiredFields = ["eventId", "organizer", "title", "speaker", "image", "hostedBy", "category", "description", "date", "location"];
+  const missingFields = requiredFields.filter(field => !req.body[field]);
+  
+  if (missingFields.length > 0) {
+    return res.status(400).json({ 
+      message: "Missing required fields", 
+      missing: missingFields 
+    });
+  }
+  
+  try {
+    const event = await Event.findOneAndUpdate(
+      { eventId },
+      { organizer, title, speaker, image, hostedBy, category, description, date, location },
+      { new: true }
+    );
+
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    res.status(200).json({ message: "Event updated successfully", event });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while updating event" });
+  }
+}
+const showEvents = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    const filter = date ? { date: { $gte: new Date(date) } } : {};
+
+    const events = await Event.find(filter).sort({ date: 1 });
+
+    if (events.length === 0) {
+      return res.status(404).json({ message: "No events found" });
+    }
+
+    res.status(200).json(events);  
+  } catch (err) {
+    console.error("Error fetching events:", err);
+    res.status(500).json({ message: "Server error while fetching events" });
+  }
+};
 
 
 
@@ -237,16 +286,7 @@ const newEventId = lastEventId ? parseInt(lastEventId) + 1 : 1;
 
 
 
-
-
-
-
-
-
-
-
-
-
-module.exports = { signUp, verifyEmail,Login,eventDetails,forgotPassword,resetPassword };
+module.exports = { signUp, verifyEmail,Login,forgotPassword,resetPassword,createEvent,showEvents,updateEvent
+  };
 
 
