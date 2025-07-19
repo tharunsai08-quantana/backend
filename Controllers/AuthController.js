@@ -7,6 +7,9 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const User = require('../Models/Users');
 const Event = require('../Models/Event');
+const appliedUser = require('../Models/appliedUser');
+const { v4: uuidv4 } = require('uuid');
+const qrcode = require("qrcode");
 const dotenv = require('dotenv');
 dotenv.config();
 const signUp = async (req, res) => {
@@ -46,9 +49,26 @@ const signUp = async (req, res) => {
 
     await transporter.sendMail({
       to: newUser.email,
-      subject: "Verify your email",
-      html: `<p>Click <a href="http://localhost:8000/auth/verify_email?token=${token}">here</a> to verify your email.</p>`
+      subject: "Eventoo -Verify Email",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;">
+          <div style="max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            <h2 style="color: #333; text-align: center;">Email Verification</h2>
+            <p style="font-size: 16px; color: #555;">Hi ${newUser.name || 'User'},</p>
+            <p style="font-size: 16px; color: #555;">Thank you for signing up. Please click the button below to verify your email address.</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="http://localhost:8000/auth/verify_email?token=${token}" 
+                 style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Verify Email
+              </a>
+            </div>
+            <p style="font-size: 14px; color: #999;">If the button doesn't work, copy and paste the following URL into your browser:</p>
+            <p style="font-size: 14px; color: #555;"><a href="http://localhost:8000/auth/verify_email?token=${token}" style="color: #007bff;">http://localhost:8000/auth/verify_email?token=${token}</a></p>
+          </div>
+        </div>
+      `
     });
+    
 
     res.status(201).json({ message: "User created successfully. Verification email sent." });
   
@@ -150,9 +170,32 @@ const forgotPassword = async (req, res) => {
     });
     await transporter.sendMail({
       to: user.email,
-      subject: "Reset your password",
-      html: `<p>Click <a href="http://localhost:8000/auth/reset_password?token=${token}">here</a> to reset your password.</p>`
+      subject: "Reset Your Password – OneStay",
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 40px auto; padding: 30px; background: #ffffff; border-radius: 12px; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);">
+          <h2 style="color: #1a1a1a; text-align: center;">Reset Your Password</h2>
+          <p style="font-size: 15px; color: #4a4a4a; line-height: 1.6; text-align: center;">
+            We received a request to reset your password for your OneStay account.
+            Click the button below to securely create a new one.
+          </p>
+          <div style="text-align: center; margin: 35px 0;">
+            <a href="http://localhost:8000/auth/reset_password?token=${token}" 
+               style="padding: 14px 30px; background-color: #007BFF; color: #ffffff; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 16px; display: inline-block;">
+              Reset Password
+            </a>
+          </div>
+          <p style="font-size: 14px; color: #7a7a7a; line-height: 1.5;">
+            If you didn't request a password reset, you can safely ignore this email. Your current password will remain unchanged.
+          </p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
+          <p style="font-size: 12px; color: #999999; text-align: center;">
+            © 2025 OneStay. All rights reserved.
+          </p>
+        </div>
+      `
     });
+    
+        
     res.status(200).json({ message: "Password reset email sent" });
   } catch (err) {
     console.error(err);
@@ -279,14 +322,125 @@ const showEvents = async (req, res) => {
 };
 
 
+const applyEvent = async (req, res) => {
+  const { eventId, title } = req.body;
+  email="sai.komma0808@gmail.com";
+  name="Sai Komma";
+  if (!email || !eventId || !name || !title) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  try {
+    const data = new appliedUser({
+      eventId,
+      name,
+      email,
+      title,
+      appliedAt: new Date(),
+      status: 'applied',
+    });
+
+    await data.save();
+
+    return res.status(201).json({ message: "Successfully applied to the event" });
+  } catch (error) {
+    console.error("Error while applying to event:", error);
+    return res.status(500).json({ message: "Something went wrong. Please try again later." });
+  }
+};
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+async function sendApprovalEmail(name, email, keyId, qrCode) {
+  try {
+    const base64Data = qrCode.replace(/^data:image\/png;base64,/, "");
+    const qrImageBuffer = Buffer.from(base64Data, "base64");
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "🎟️ Your Approval QR Code",
+      html: `
+        <p>Hello <strong>${name}</strong>,</p>
+        <p>Your request has been approved.</p>
+        <p><strong>Key ID:</strong> ${keyId}</p>
+        <img src="cid:qrimage" alt="QR Code" style="width:200px;height:auto;" />
+      `,
+      attachments: [
+        {
+          filename: "qrcode.png",
+          content: qrImageBuffer,
+          cid: "qrimage",
+        },
+      ],
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log("Approval email sent to", email);
+  } catch (err) {
+    console.error(" Email error:", err);
+  }
+}
+
+const userEventStatus = async (req, res) => {
+  const { eventId, name, email, status } = req.body;
+
+  if (!eventId || !name || !email) {
+    return res.status(400).json({ message: "Event ID, name, and email are required" });
+  }
+
+  try {
+    const data = await appliedUser.findOne({ eventId, name, email });
+
+    if (!data) {
+      return res.status(404).json({ message: "No application found for this event" });
+    }
+
+    if (status) {
+      data.status = status;
+      data.statusAt = new Date();
+
+      if (status === "Approved") {
+        const keyId = uuidv4(); 
+        const qrCodeImage = await qrcode.toDataURL(keyId); 
+
+        data.qrCode = qrCodeImage;
+        data.keyId = keyId;
+        console.log("QR Code generated:", qrCodeImage);
+        await sendApprovalEmail(name, email, keyId, qrCodeImage);
+      }
+      if(status === "Rejected") {
+        data.qrCode = null;
+        data.keyId = null;
+      }
+
+      await data.save();
+    }
+
+    return res.status(200).json({ message: "Status updated", data });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 
 
 
-
-
-
-
-module.exports = { signUp, verifyEmail,Login,forgotPassword,resetPassword,createEvent,showEvents,updateEvent
+module.exports = { userEventStatus,signUp, verifyEmail,Login,forgotPassword,resetPassword,createEvent,showEvents,updateEvent,applyEvent
   };
 
 
