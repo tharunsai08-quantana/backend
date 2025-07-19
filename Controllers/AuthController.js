@@ -8,6 +8,7 @@ const nodemailer = require('nodemailer');
 const User = require('../Models/Users');
 const Event = require('../Models/Event');
 const appliedUser = require('../Models/appliedUser');
+const attendedUser = require('../Models/attendedUser');
 const userActivity = require('../Models/userActivity');
 const { v4: uuidv4 } = require('uuid');
 const qrcode = require("qrcode");
@@ -179,7 +180,7 @@ const forgotPassword = async (req, res) => {
     }
     const token = crypto.randomBytes(32).toString('hex');
     user.verificationToken = token;
-    user.resetPasswordExpires = Date.now() + 3600000; 
+    user.resetPasswordExpires = Date.now() + 3600000;
     await user.save();
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -232,7 +233,7 @@ const resetPassword = async (req, res) => {
 
     const user = await User.findOne({
       verificationToken: token,
-      resetPasswordExpires: { $gt: Date.now() }, 
+      resetPasswordExpires: { $gt: Date.now() },
     });
 
     if (!user) {
@@ -258,14 +259,14 @@ const createEvent = async (req, res) => {
   const lastEventId = (await Event.findOne().sort({ _id: -1 }))?.eventId;
   const newEventId = lastEventId ? parseInt(lastEventId) + 1 : 1;
 
-  const { organizer, title, speaker, image, hostedBy, category, description, date, location } = req.body;
+  const { organizer, title, speaker, image, hostedBy, category, description, eventDate, location } = req.body;
 
-  if (!organizer || !title || !speaker || !image || !hostedBy || !category || !description || !date || !location) {
+  if (!organizer || !title || !speaker || !image || !hostedBy || !category || !description || !eventDate || !location) {
     return res.status(400).json({ message: "All fields are required" });
   }
-  if (Event.findOne({ title, date })) {
-    return res.status(400).json({ "messgae": "Event with the same title and date already exists" });
-  }
+  // if (Event.findOne({ title, eventDate })) {
+  //   return res.status(400).json({ "messgae": "Event with the same title and date already exists" });
+  // }
   const event = new Event({
     eventId: newEventId.toString(),
     organizer,
@@ -275,7 +276,7 @@ const createEvent = async (req, res) => {
     hostedBy,
     category,
     description,
-    date,
+    eventDate,
     location,
     createdBy: organizer
   });
@@ -335,11 +336,11 @@ const showEvents = async (req, res) => {
   }
 };
 
-
 const applyEvent = async (req, res) => {
-  const { eventId, title } = req.body;
-  email = "sai.komma0808@gmail.com";
-  name = "Sai Komma";
+  const { eventId, title, eventDate } = req.body;
+  const email = "sai.komma0808@gmail.com";
+  const name = "Sai Komma";
+
   if (!email || !eventId || !name || !title) {
     return res.status(400).json({ message: "All fields are required" });
   }
@@ -350,18 +351,20 @@ const applyEvent = async (req, res) => {
       name,
       email,
       title,
+      eventDate,
       appliedAt: new Date(),
-      status: 'applied',
+      status: 'Applied',
     });
 
     await data.save();
 
     return res.status(201).json({ message: "Successfully applied to the event" });
   } catch (error) {
-    console.error("Error while applying to event:", error);
-    return res.status(500).json({ message: "Something went wrong. Please try again later." });
+    return res.status(500).json({ message: error.message || "Internal Server Error" });
   }
+
 };
+
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -371,7 +374,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function sendApprovalEmail(name, email, keyId, qrCode, title) {
+async function sendApprovalEmail(name, email, keyId, qrCode, title, eventDate) {
   try {
     const base64Data = qrCode.replace(/^data:image\/png;base64,/, "");
     const qrImageBuffer = Buffer.from(base64Data, "base64");
@@ -399,6 +402,9 @@ async function sendApprovalEmail(name, email, keyId, qrCode, title) {
             <p style="font-size: 16px; color: #555;">
               Your request has been <strong style="color: green;">approved</strong> for the event <strong>${title}</strong>.
             </p>
+                        <p style="font-size: 16px; color: #555;">
+  <strong>Event Date:</strong> ${new Date(eventDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+</p>
             <p style="font-size: 16px; color: #555;">
               <strong>Key ID:</strong> <code style="background: #f4f4f4; padding: 4px 8px; border-radius: 4px;">${keyId}</code>
             </p>
@@ -408,6 +414,8 @@ async function sendApprovalEmail(name, email, keyId, qrCode, title) {
             <p style="font-size: 14px; color: #888;">
               Please present this QR code at the entry gate for verification.
             </p>
+
+
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
             <p style="font-size: 12px; color: #aaa;">This is an automated message. Please do not reply.</p>
           </div>
@@ -432,15 +440,11 @@ async function sendApprovalEmail(name, email, keyId, qrCode, title) {
 }
 
 const userEventStatus = async (req, res) => {
-  const { eventId, name, email, status, title } = req.body;
-
-  if (!eventId || !name || !email || !title) {
-    return res.status(400).json({ message: "Event ID, name, and email are required" });
-  }
-
+  const { eventId, name, email, status, title, eventDate } = req.body;
+  console.log("Received data:", { eventId, name, email, status, title, eventDate });
   try {
-    const data = await appliedUser.findOne({ eventId, name, email, title });
-
+    const data = await appliedUser.findOne({ eventId, name, email, title, eventDate });
+    console.log(data);
     if (!data) {
       return res.status(404).json({ message: "No application found for this event" });
     }
@@ -455,7 +459,7 @@ const userEventStatus = async (req, res) => {
 
         data.qrCode = qrCodeImage;
         data.keyId = keyId;
-        await sendApprovalEmail(name, email, keyId, qrCodeImage, title);
+        await sendApprovalEmail(name, email, keyId, qrCodeImage, title, eventDate);
       }
       if (status === "Rejected") {
         data.qrCode = null;
@@ -473,9 +477,46 @@ const userEventStatus = async (req, res) => {
 };
 
 
+const idVerification = async (req, res) => {
+  const { key } = req.body;
+
+  try {
+    const data = await appliedUser.findOne({ keyId: key });
+    if (!data) {
+      return res.status(404).json({ message: "No data found for this key" });
+    }
+
+    if (new Date(data.eventDate) < new Date()) {
+      return res.status(400).json({ message: "Event has already passed" });
+    }
+
+    const alreadyVerified = await attendedUser.findOne({ email: data.email, eventId: data.eventId });
+    if (alreadyVerified) {
+      return res.status(400).json({ message: "User verification already done!" });
+    }
+
+    const attendedUserData = new attendedUser({
+      eventId: data.eventId,
+      title: data.title,
+      name: data.name,
+      email: data.email,
+      attended: true,
+      verificationTime: new Date()
+    });
+
+    await attendedUserData.save();
+
+    return res.status(200).json({
+      message: "Attendance verified successfully",
+      data: attendedUserData
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 
 module.exports = {
-  userEventStatus, signUp, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent
+   signUp, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent,userEventStatus,idVerification
 };
 
 

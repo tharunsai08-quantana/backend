@@ -6,6 +6,7 @@ const appliedUserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true },
     appliedAt: { type: Date},
+    eventDate: { type: Date, required: true },
     statusAt: { type: Date, default: Date.now },
     status: { type: String, enum: ['Applied', 'Approved', 'Rejected'], default: 'Applied' },
     qrCode: { type: String },
