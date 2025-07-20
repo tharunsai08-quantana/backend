@@ -380,7 +380,6 @@ const updateEvent = async (req, res) => {
 const showEvents = async (req, res) => {
   try {
     const { email } = req.body;
-    console.log("email:", email);
 
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
@@ -409,7 +408,7 @@ const showEvents = async (req, res) => {
 
 
 const applyEvent = async (req, res) => {
-  const { eventId, title, eventDate,name,email } = req.body;
+  const { eventId, title, eventDate, name, email } = req.body;
   if (!email || !eventId || !name || !title) {
     return res.status(400).json({ message: "All fields are required" });
   }
@@ -436,21 +435,35 @@ const applyEvent = async (req, res) => {
 
 
 const appliedEvent = async (req, res) => {
-  const { email } = req.body;
+  const { email, role } = req.body;
 
   try {
-    const data = await appliedUser.find({ email });
+    let data;
+
+    if (role === "admin") {
+      data = await appliedUser.find({ status: "Applied" });
+    } else if (role === "user") {
+      if (!email) {
+        return res.status(400).json({ message: "Email is required for user role" });
+      }
+      data = await appliedUser.find({ email });
+    } else {
+      return res.status(400).json({ message: "Invalid role" });
+    }
 
     if (!data || data.length === 0) {
-      return res.status(404).json({ message: "No applied events found for this user" });
+      return res.status(404).json({ message: "No applied events found" });
     }
 
     return res.status(200).json({ data });
-
   } catch (error) {
-    return res.status(error.status || 500).json({ message: error.message || "Internal Server Error" });
+    return res.status(500).json({
+      message: error.message || "Internal Server Error",
+    });
   }
 };
+
+
 
 
 
@@ -530,7 +543,7 @@ async function sendApprovalEmail(name, email, keyId, qrCode, title, eventDate) {
 const userEventStatus = async (req, res) => {
   const { eventId, name, email, status, title, eventDate } = req.body;
   try {
-    const data = await appliedUser.findOne({ eventId, name, email, title, eventDate });    if (!data) {
+    const data = await appliedUser.findOne({ eventId, name, email, title, eventDate }); if (!data) {
       return res.status(404).json({ message: "No application found for this event" });
     }
 
@@ -601,7 +614,7 @@ const idVerification = async (req, res) => {
 };
 
 module.exports = {
-   signUp, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent,userEventStatus,idVerification,appliedEvent
+  signUp, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus, idVerification, appliedEvent
 };
 
 
