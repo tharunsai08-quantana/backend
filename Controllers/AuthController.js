@@ -265,7 +265,7 @@ const createEvent = async (req, res) => {
     return res.status(400).json({ message: "All fields are required" });
   }
   // if (Event.findOne({ title, eventDate })) {
-  //   return res.status(400).json({ "messgae": "Event with the same title and date already exists" });
+  //   return res.status(400).json({ "messgae": "Event with the same title and eventDate already exists" });
   // }
   const event = new Event({
     eventId: newEventId.toString(),
@@ -290,20 +290,55 @@ const createEvent = async (req, res) => {
 }
 
 const updateEvent = async (req, res) => {
-  const { eventId, organizer, title, speaker, image, hostedBy, category, description, date, location } = req.body;
-  const requiredFields = ["eventId", "organizer", "title", "speaker", "image", "hostedBy", "category", "description", "date", "location"];
+  const {
+    eventId,
+    organizer,
+    title,
+    speaker,
+    image,
+    hostedBy,
+    category,
+    description,
+    eventDate,
+    location,
+  } = req.body;
+
+  const requiredFields = [
+    "eventId",
+    "organizer",
+    "title",
+    "speaker",
+    "image",
+    "hostedBy",
+    "category",
+    "description",
+    "eventDate",
+    "location",
+  ];
+
   const missingFields = requiredFields.filter(field => !req.body[field]);
 
   if (missingFields.length > 0) {
     return res.status(400).json({
       message: "Missing required fields",
-      missing: missingFields
+      missing: missingFields,
     });
   }
+
   try {
     const event = await Event.findOneAndUpdate(
       { eventId },
-      { organizer, title, speaker, image, hostedBy, category, description, date, location },
+      {
+        organizer,
+        title,
+        speaker,
+        image,
+        hostedBy,
+        category,
+        description,
+        eventDate,
+        location,
+      },
       { new: true }
     );
 
@@ -311,22 +346,57 @@ const updateEvent = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    res.status(200).json({ message: "Event updated successfully", event });
+    const appliedUsers = await appliedUser.find(
+      { status: "applied", eventId: event.eventId },
+      { email: 1, _id: 0 }
+    );
+
+    const emails = appliedUsers.map(user => user.email);
+
+    if (emails.length > 0) {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        bcc: emails,
+        subject: `Update on event: ${title}`,
+        text: `Hello,\n\nThe event "${title}" you applied for has been updated.\nPlease check the details.\n\nBest regards,\nEvent Team`,
+      });
+    }
+
+    return res.status(200).json({ message: "Event updated successfully", event });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error while updating event" });
+    return res.status(500).json({ message: "Server error while updating event" });
   }
-}
-
+};
 
 const showEvents = async (req, res) => {
   try {
-    const { date } = req.query;
-    const filter = date ? { date: { $gte: new Date(date) } } : {};
-    const events = await Event.find(filter).sort({ date: 1 });
+    const { email } = req.body;
+    console.log("email:", email);
 
-    if (events.length === 0) {
-      return res.status(404).json({ message: "No events found" });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const applied = await appliedUser.find({ email }, { eventId: 1, _id: 0 });
+    const appliedEventIds = applied.map((item) => item.eventId);
+    const now = new Date();
+
+    const events = await Event.find({
+      eventDate: { $gte: now },
+      eventId: { $nin: appliedEventIds },
+    }).sort({ eventDate: 1 });
+
+    if (!events.length) {
+      return res.status(200).json({ message: "No events found" });
     }
 
     res.status(200).json(events);
@@ -336,11 +406,10 @@ const showEvents = async (req, res) => {
   }
 };
 
-const applyEvent = async (req, res) => {
-  const { eventId, title, eventDate } = req.body;
-  const email = "sai.komma0808@gmail.com";
-  const name = "Sai Komma";
 
+
+const applyEvent = async (req, res) => {
+  const { eventId, title, eventDate,name,email } = req.body;
   if (!email || !eventId || !name || !title) {
     return res.status(400).json({ message: "All fields are required" });
   }
@@ -364,6 +433,25 @@ const applyEvent = async (req, res) => {
   }
 
 };
+
+
+const appliedEvent = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const data = await appliedUser.find({ email });
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ message: "No applied events found for this user" });
+    }
+
+    return res.status(200).json({ data });
+
+  } catch (error) {
+    return res.status(error.status || 500).json({ message: error.message || "Internal Server Error" });
+  }
+};
+
 
 
 const transporter = nodemailer.createTransport({
@@ -513,7 +601,7 @@ const idVerification = async (req, res) => {
 };
 
 module.exports = {
-   signUp, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent,userEventStatus,idVerification
+   signUp, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent,userEventStatus,idVerification,appliedEvent
 };
 
 
