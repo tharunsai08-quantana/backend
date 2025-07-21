@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {signUp,verifyEmail,Login,createEvent,forgotPassword,resetPassword,showEvents,updateEvent,applyEvent,appliedEvent,idVerification,showApprovedEvents,userEventStatus} = require('../Controllers/AuthController');
+const {signUp,verifyEmail,Login,createEvent,deleteEvent,forgotPassword,resetPassword,showEvents,updateEvent,applyEvent,appliedEvent,idVerification,showApprovedEvents,userEventStatus} = require('../Controllers/AuthController');
 const isAdmin = require('../Middleware/admin');
 const auth = require('../Middleware/auth');
 
@@ -19,4 +19,6 @@ router.get('/approved_events', showApprovedEvents);
 router.post('/apply_event', applyEvent);
 router.post('/applied_event', appliedEvent);
 router.post('/approve_status',userEventStatus)
+router.post('/delete_event', deleteEvent);
+
 module.exports = router;

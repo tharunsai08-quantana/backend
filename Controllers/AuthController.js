@@ -442,6 +442,26 @@ const applyEvent = async (req, res) => {
 
 };
 
+const deleteEvent = async (req, res) => {
+  try {
+    const { email, eventId } = req.body;
+
+    if (!email || !eventId) {
+      return res.status(400).json({ message: "Email and Event ID are required" });
+    }
+
+    const result = await appliedUser.deleteOne({ email, eventId });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "No matching event found to delete" });
+    }
+
+    res.status(200).json({ message: "Event deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 const appliedEvent = async (req, res) => {
   const { email, role } = req.body;
@@ -653,7 +673,7 @@ const idVerification = async (req, res) => {
 };
 
 module.exports = {
-  signUp, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
+  signUp,deleteEvent, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
 };
 
 
