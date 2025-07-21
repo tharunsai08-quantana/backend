@@ -379,15 +379,24 @@ const updateEvent = async (req, res) => {
 
 const showEvents = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, role } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
 
+    const now = new Date();
+
+    if (role === "admin") {
+      const events = await Event.find({ eventDate: { $gte: now } }).sort({ eventDate: 1 });
+      if (!events.length) {
+        return res.status(200).json({ message: "No events found" });
+      }
+      return res.status(200).json(events);
+    }
+
     const applied = await appliedUser.find({ email }, { eventId: 1, _id: 0 });
     const appliedEventIds = applied.map((item) => item.eventId);
-    const now = new Date();
 
     const events = await Event.find({
       eventDate: { $gte: now },
@@ -400,11 +409,11 @@ const showEvents = async (req, res) => {
 
     res.status(200).json(events);
   } catch (err) {
-    console.error("Error fetching events:", err);
     res.status(500).json({ message: "Server error while fetching events" });
   }
 };
 
+module.exports = showEvents;
 
 
 const applyEvent = async (req, res) => {
@@ -440,19 +449,21 @@ const appliedEvent = async (req, res) => {
   try {
     let data;
 
-    if (role === "admin") {
+    if (role === "admin" || role === "user") {
       data = await appliedUser.find({ status: "Applied" });
-    } else if (role === "user") {
-      if (!email) {
-        return res.status(400).json({ message: "Email is required for user role" });
-      }
-      data = await appliedUser.find({ email });
-    } else {
+    }
+    //  else if (role === "user") {
+    //   if (!email) {
+    //     return res.status(400).json({ message: "Email is required for user role" });
+    //   }
+    //   data = await appliedUser.find({ email });
+    // } 
+    else {
       return res.status(400).json({ message: "Invalid role" });
     }
 
     if (!data || data.length === 0) {
-      return res.status(404).json({ message: "No applied events found" });
+      return res.status(200).json({ message: "No applied events found" });
     }
 
     return res.status(200).json({ data });
@@ -464,7 +475,18 @@ const appliedEvent = async (req, res) => {
 };
 
 
-
+const showApprovedEvents = async (req, res) => {
+  try {
+    const events = await appliedUser.find({ status: "Approved" });
+    if (!events || events.length === 0) {
+      return res.status(404).json({ message: "No approved events found" });
+    }
+    return res.status(200).json({ events });
+  } catch (error) {
+    console.error("Error fetching approved events:", error);
+    return res.status(500).json({ message: "Server error while fetching approved events" });
+  }
+}
 
 
 const transporter = nodemailer.createTransport({
@@ -541,9 +563,27 @@ async function sendApprovalEmail(name, email, keyId, qrCode, title, eventDate) {
 }
 
 const userEventStatus = async (req, res) => {
-  const { eventId, name, email, status, title, eventDate } = req.body;
+  const { eventId, name, email, status, title,eventDate } = req.body;
+console.log("Received data:", { eventId, name, email, status, title,eventDate });
   try {
-    const data = await appliedUser.findOne({ eventId, name, email, title, eventDate }); if (!data) {
+    const numericEventId = parseInt(eventId);
+    console.log("Parsed eventId:", numericEventId);
+    const eventDateObj = new Date(eventDate);
+    if (isNaN(eventDateObj.getTime())) {
+      return res.status(400).json({ message: "Invalid eventDate format", eventDate });
+    }
+
+
+
+    const data = await appliedUser.findOne({
+      eventId: numericEventId,
+      name,
+      email,
+      title,
+      eventDate
+    });
+
+    if (!data) {
       return res.status(404).json({ message: "No application found for this event" });
     }
 
@@ -554,11 +594,11 @@ const userEventStatus = async (req, res) => {
       if (status === "Approved") {
         const keyId = uuidv4();
         const qrCodeImage = await qrcode.toDataURL(keyId);
-
         data.qrCode = qrCodeImage;
         data.keyId = keyId;
         await sendApprovalEmail(name, email, keyId, qrCodeImage, title, eventDate);
       }
+
       if (status === "Rejected") {
         data.qrCode = null;
         data.keyId = null;
@@ -569,11 +609,10 @@ const userEventStatus = async (req, res) => {
 
     return res.status(200).json({ message: "Status updated", data });
   } catch (err) {
-    console.error(err);
+    console.error("Error updating user event status:", err);
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-
 
 const idVerification = async (req, res) => {
   const { key } = req.body;
@@ -614,7 +653,7 @@ const idVerification = async (req, res) => {
 };
 
 module.exports = {
-  signUp, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus, idVerification, appliedEvent
+  signUp, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
 };
 
 
