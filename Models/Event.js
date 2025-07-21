@@ -9,7 +9,7 @@ const eventSchema=new mongoose.Schema({
     hostedBy: { type: String, required: true },
     category: { type: String, required: true },
     description: { type: String, required: true },
-    date: { type: Date, required: true },
+    eventDate: { type: Date, required: true },
     location: { type: String, required: true },
     createdBy: {type:String, required: true },
     updatedAt: { type: Date, default: Date.now },
