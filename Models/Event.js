@@ -11,7 +11,6 @@ const eventSchema=new mongoose.Schema({
     description: { type: String, required: true },
     eventDate: { type: Date, required: true },
     location: { type: String, required: true },
-    createdBy: {type:String, required: true },
     updatedAt: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now }
 });

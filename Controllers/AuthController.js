@@ -469,15 +469,15 @@ const appliedEvent = async (req, res) => {
   try {
     let data;
 
-    if (role === "admin" || role === "user") {
+    if (role === "admin") {
       data = await appliedUser.find({ status: "Applied" });
     }
-    //  else if (role === "user") {
-    //   if (!email) {
-    //     return res.status(400).json({ message: "Email is required for user role" });
-    //   }
-    //   data = await appliedUser.find({ email });
-    // } 
+     else if (role === "user") {
+      if (!email) {
+        return res.status(400).json({ message: "Email is required for user role" });
+      }
+      data = await appliedUser.find({ email });
+    } 
     else {
       return res.status(400).json({ message: "Invalid role" });
     }
@@ -660,7 +660,7 @@ const idVerification = async (req, res) => {
       attended: true,
       verificationTime: new Date()
     });
-
+    console.log("Creating attendedUserData:", attended);
     await attendedUserData.save();
 
     return res.status(200).json({
