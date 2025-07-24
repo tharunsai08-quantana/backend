@@ -672,8 +672,62 @@ const idVerification = async (req, res) => {
   }
 };
 
+const attendedUsers = async (req, res) => {
+try {
+  const users = await attendedUser.find();
+
+  if (!users || users.length === 0) {
+    return res.status(404).json({ message: "No attended users found" });
+  }
+
+  return res.status(200).json({ data: users });
+} catch (err) {
+  console.error("Error fetching users:", err);
+  return res.status(500).json({ message: "Server error while fetching users" });
+}
+};
+
+const eventDetailsforGatekeeper = async (req, res) => {
+  try {
+    const date = new Date();
+
+    const upcomingEvents = await appliedUser
+      .find({ eventDate: { $gte: date } })
+      .sort({ eventDate: 1 })
+      .limit(3);
+
+    const result = [];
+
+    for (let event of upcomingEvents) {
+      const titleRegex = new RegExp(`^${event.title}$`, 'i'); // Case-insensitive match
+
+      const approvedCount = await appliedUser.countDocuments({
+        title: { $regex: titleRegex },
+        status: "Approved",
+      });
+
+      const attendedCount = await attendedUser.countDocuments({
+        title: { $regex: titleRegex },
+        attended: true,
+      });
+
+      result.push({
+        title: event.title,
+        eventDate: event.eventDate,
+        approvedCount,
+        attendedCount,
+      });
+    }
+
+    return res.status(200).json({
+      nextEvents: result,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error while fetching event details" });
+  }
+};
 module.exports = {
-  signUp,deleteEvent, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
+ eventDetailsforGatekeeper, attendedUsers,signUp,deleteEvent, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
 };
 
 

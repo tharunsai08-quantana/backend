@@ -6,7 +6,8 @@ const attendedUserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true },
     attened: { type: Boolean, default: true },
-    verificationTime: { type: Date, default: Date.now }
+    verificationTime: { type: Date, default: Date.now },
+    approvedBy: { type: String, required: true }
 });
 
 module.exports = mongoose.model("attendedUser", attendedUserSchema);
