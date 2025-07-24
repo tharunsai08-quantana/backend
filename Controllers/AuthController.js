@@ -14,6 +14,7 @@ const { v4: uuidv4 } = require('uuid');
 const qrcode = require("qrcode");
 const dotenv = require('dotenv');
 const useragent = require('useragent');
+const Users = require('../Models/Users');
 dotenv.config();
 
 
@@ -726,12 +727,23 @@ const eventDetailsforGatekeeper = async (req, res) => {
     return res.status(500).json({ message: "Server error while fetching event details" });
   }
 };
+const movingCount = async (req, res) => {
+  try {
+    const totalEvents = await Event.countDocuments();
+    const totaluser = await User.countDocuments();
+
+    return res.status(200).json({ totalEvents, totaluser });
+  } catch (err) {
+    console.error("Error fetching count:", err);
+    return res.status(500).json({ message: "Server error while fetching count" });
+  }
+};
 
 
 
 
 module.exports = {
- eventDetailsforGatekeeper, attendedUsers,signUp,deleteEvent, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
+ eventDetailsforGatekeeper,movingCount, attendedUsers,signUp,deleteEvent, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
 };
 
 

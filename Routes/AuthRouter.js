@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {signUp,verifyEmail,Login,attendedUsers,eventDetailsforGatekeeper,createEvent,deleteEvent,forgotPassword,resetPassword,showEvents,updateEvent,applyEvent,appliedEvent,idVerification,showApprovedEvents,userEventStatus} = require('../Controllers/AuthController');
+const {signUp,verifyEmail,Login,attendedUsers,movingCount,eventDetailsforGatekeeper,createEvent,deleteEvent,forgotPassword,resetPassword,showEvents,updateEvent,applyEvent,appliedEvent,idVerification,showApprovedEvents,userEventStatus} = require('../Controllers/AuthController');
 const isAdmin = require('../Middleware/admin');
 const auth = require('../Middleware/auth');
 const attendedUser = require('../Models/attendedUser');
@@ -11,6 +11,7 @@ router.post('/login', Login);
 router.get('/verify_email', verifyEmail);
 router.get('/forgot_password', forgotPassword);
 router.get('/reset_password', resetPassword);
+router.get('/count', movingCount);
 
 router.post('/create_event', createEvent);
 router.post('/update_event', updateEvent);
