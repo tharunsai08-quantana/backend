@@ -726,6 +726,10 @@ const eventDetailsforGatekeeper = async (req, res) => {
     return res.status(500).json({ message: "Server error while fetching event details" });
   }
 };
+
+
+
+
 module.exports = {
  eventDetailsforGatekeeper, attendedUsers,signUp,deleteEvent, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
 };
