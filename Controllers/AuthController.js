@@ -635,6 +635,11 @@ console.log("Received data:", { eventId, name, email, status, title,eventDate })
   }
 };
 
+
+
+
+
+
 const idVerification = async (req, res) => {
   const { key } = req.body;
 
@@ -648,7 +653,11 @@ const idVerification = async (req, res) => {
       return res.status(400).json({ message: "Event has already passed" });
     }
 
-    const alreadyVerified = await attendedUser.findOne({ email: data.email, eventId: data.eventId });
+    const alreadyVerified = await attendedUser.findOne({
+      email: data.email,
+      eventId: data.eventId,
+    });
+
     if (alreadyVerified) {
       return res.status(400).json({ message: "User verification already done!" });
     }
@@ -658,20 +667,27 @@ const idVerification = async (req, res) => {
       title: data.title,
       name: data.name,
       email: data.email,
-      attended: true,
-      verificationTime: new Date()
+      attened: true, 
+      verificationTime: new Date(),
     });
-    console.log("Creating attendedUserData:", attended);
+
     await attendedUserData.save();
 
     return res.status(200).json({
       message: "Attendance verified successfully",
-      data: attendedUserData
+      data: attendedUserData,
     });
   } catch (err) {
-    return res.status(500).json({ message: "Server error", error: err.message });
+    return res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
   }
 };
+
+
+
+
 
 const attendedUsers = async (req, res) => {
 try {
@@ -709,7 +725,7 @@ const eventDetailsforGatekeeper = async (req, res) => {
 
       const attendedCount = await attendedUser.countDocuments({
         title: { $regex: titleRegex },
-        attended: true,
+        attened: true,
       });
 
       result.push({
