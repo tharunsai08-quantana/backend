@@ -758,8 +758,105 @@ const movingCount = async (req, res) => {
 
 
 
+const Fuse = require('fuse.js');
+const moment = require('moment');
+
+const getMatchedEvent = async (message) => {
+  const events = await Event.find({}, 'title');
+  const fuse = new Fuse(events, { keys: ['title'], threshold: 0.4 });
+  const result = fuse.search(message);
+  return result.length > 0 ? result[0].item.title : null;
+};
+
+const askLlm = async ({ role, email, message }) => {
+  let mongoResult = "I couldn't find any relevant data.";
+  const msg = message.toLowerCase();
+  const matchedEvent = await getMatchedEvent(msg);
+
+  try {
+    switch (role) {
+      case 'user':
+        if (msg.includes('applied') || msg.includes('application')) {
+          if (msg.includes('rejected')) {
+            const rejected = await appliedUser.find({ email, status: 'Rejected' });
+            mongoResult = rejected.length
+              ? 'Rejected applications:\n' + rejected.map(r => `- ${r.title}`).join('\n')
+              : 'No rejected applications found.';
+          } else if (msg.includes('approved')) {
+            const approved = await appliedUser.find({ email, status: 'Approved' });
+            mongoResult = approved.length
+              ? 'Approved applications:\n' + approved.map(r => `- ${r.title}`).join('\n')
+              : 'No approved applications found.';
+          } else if (matchedEvent) {
+            const app = await appliedUser.findOne({ email, title: matchedEvent });
+            mongoResult = app
+              ? `You applied for ${matchedEvent}. Status: ${app.status}`
+              : `No application found for ${matchedEvent}.`;
+          } else {
+            const allApps = await appliedUser.find({ email });
+            mongoResult = allApps.length
+              ? 'You applied for:\n' + allApps.map(a => `- ${a.title} (${a.status})`).join('\n')
+              : 'No applications found.';
+          }
+        }
+
+        else if (msg.includes('attend')) {
+          if (msg.includes('last month')) {
+            const start = moment().subtract(1, 'month').startOf('month').toDate();
+            const end = moment().subtract(1, 'month').endOf('month').toDate();
+            const attended = await attendedUser.find({
+              email,
+              attended: true,
+              timestamp: { $gte: start, $lte: end }
+            });
+            mongoResult = attended.length
+              ? 'Events you attended last month:\n' + attended.map(e => `- ${e.title}`).join('\n')
+              : 'You didn’t attend any events last month.';
+          } else if (matchedEvent) {
+            const att = await attendedUser.findOne({ email, title: matchedEvent });
+            mongoResult = att
+              ? `You attended ${matchedEvent}`
+              : `You did not attend ${matchedEvent}`;
+          } else {
+            const attended = await attendedUser.find({ email, attended: true });
+            mongoResult = attended.length
+              ? 'Events you attended:\n' + attended.map(e => `- ${e.title}`).join('\n')
+              : 'You have not attended any events.';
+          }
+        }
+
+        else if (msg.includes('login')) {
+          if (msg.includes('last week')) {
+            const lastWeek = moment().subtract(7, 'days').toDate();
+            const count = await userActivity.countDocuments({
+              email,
+              timestamp: { $gte: lastWeek }
+            });
+            mongoResult = `You logged in ${count} times in the last week.`;
+          } else {
+            const logs = await userActivity.find({ email }).sort({ timestamp: -1 }).limit(3);
+            mongoResult = logs.length
+              ? 'Your last logins:\n' + logs.map(l => `${l.device} from ${l.ip}`).join('\n')
+              : 'No login data found.';
+          }
+        }
+
+        break;
+
+      default:
+        mongoResult = `Role '${role}' not supported yet.`;
+    }
+
+    return mongoResult;
+
+  } catch (err) {
+    console.error('askLlm error:', err);
+    return "Something went wrong. Please try again.";
+  }
+};
+
 module.exports = {
- eventDetailsforGatekeeper,movingCount, attendedUsers,signUp,deleteEvent, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
+ eventDetailsforGatekeeper,askLlm,movingCount, attendedUsers,signUp,deleteEvent, verifyEmail, Login, forgotPassword, resetPassword, createEvent, showEvents, updateEvent, applyEvent, userEventStatus,showApprovedEvents, idVerification, appliedEvent
 };
 
 
