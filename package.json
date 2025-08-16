@@ -19,6 +19,8 @@
     "mongoose": "^8.16.4",
     "nodemailer": "^7.0.5",
     "qrcode": "^1.5.4",
+    "redis": "^5.8.1",
+    "socket.io": "^4.8.1",
     "useragent": "^2.3.0",
     "uuid": "^11.1.0"
   },
